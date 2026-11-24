@@ -1,10 +1,10 @@
 package com.auradial.glassdialer
 
 import android.content.Intent
-import android.media.AudioManager
 import android.telecom.Call
 import android.telecom.CallAudioState
 import android.telecom.InCallService
+import android.telecom.VideoProfile
 
 class CustomInCallService : InCallService() {
 
@@ -12,10 +12,10 @@ class CustomInCallService : InCallService() {
         var instance: CustomInCallService? = null
         var currentCall: Call? = null
         var onCallStateChanged: ((Call?) -> Unit)? = null
-        var onAudioStateChanged: ((isMuted: Boolean, isSpeaker: Boolean) -> Unit)? = null
+        var onAudioStateChanged: ((isMuted: Boolean, isSpeaker: Boolean, routeLabel: String) -> Unit)? = null
 
         fun answerCurrentCall() {
-            currentCall?.answer(android.telecom.VideoProfile.STATE_AUDIO_ONLY)
+            currentCall?.answer(VideoProfile.STATE_AUDIO_ONLY)
         }
 
         fun endCurrentCall() {
@@ -37,17 +37,41 @@ class CustomInCallService : InCallService() {
             notifyAudioState()
         }
 
+        fun cycleAudioRoute() {
+            val currentRoute = instance?.callAudioState?.route ?: CallAudioState.ROUTE_EARPIECE
+            val nextRoute = when (currentRoute) {
+                CallAudioState.ROUTE_EARPIECE -> CallAudioState.ROUTE_SPEAKER
+                CallAudioState.ROUTE_SPEAKER -> CallAudioState.ROUTE_BLUETOOTH
+                else -> CallAudioState.ROUTE_EARPIECE
+            }
+            instance?.setAudioRoute(nextRoute)
+            notifyAudioState()
+        }
+
+        fun holdCall(hold: Boolean) {
+            val call = currentCall ?: return
+            if (hold) call.hold() else call.unhold()
+        }
+
         fun sendDtmf(digit: Char) {
             val call = currentCall ?: return
             call.playDtmfTone(digit)
             call.stopDtmfTone()
         }
 
+        fun routeLabelFor(route: Int): String = when (route) {
+            CallAudioState.ROUTE_SPEAKER -> "Speaker"
+            CallAudioState.ROUTE_BLUETOOTH -> "Bluetooth"
+            CallAudioState.ROUTE_WIRED_HEADSET -> "Headset"
+            else -> "Earpiece"
+        }
+
         private fun notifyAudioState() {
             val audioState = instance?.callAudioState
             val isMuted = audioState?.isMuted ?: false
-            val isSpeaker = audioState?.route == CallAudioState.ROUTE_SPEAKER
-            onAudioStateChanged?.invoke(isMuted, isSpeaker)
+            val route = audioState?.route ?: CallAudioState.ROUTE_EARPIECE
+            val isSpeaker = route == CallAudioState.ROUTE_SPEAKER
+            onAudioStateChanged?.invoke(isMuted, isSpeaker, routeLabelFor(route))
         }
     }
 
@@ -82,7 +106,7 @@ class CustomInCallService : InCallService() {
         super.onCallAudioStateChanged(audioState)
         val isMuted = audioState.isMuted
         val isSpeaker = audioState.route == CallAudioState.ROUTE_SPEAKER
-        onAudioStateChanged?.invoke(isMuted, isSpeaker)
+        onAudioStateChanged?.invoke(isMuted, isSpeaker, routeLabelFor(audioState.route))
     }
 
     override fun onCallAdded(call: Call) {
