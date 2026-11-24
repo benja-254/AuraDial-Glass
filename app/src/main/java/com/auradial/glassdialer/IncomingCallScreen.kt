@@ -1,27 +1,30 @@
 package com.auradial.glassdialer
 
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -29,255 +32,165 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
 @Composable
-fun IncomingCallUI(
+fun CallScreen(
     callerName: String,
     callerNumber: String,
-    isBusyBanner: Boolean,
+    isRinging: Boolean,
     onAnswer: () -> Unit,
-    onDecline: () -> Unit
+    onEndCall: () -> Unit
 ) {
-    if (isBusyBanner) {
-        LiquidGlassBusyBanner(
-            callerName = callerName,
-            callerNumber = callerNumber,
-            onAnswer = onAnswer,
-            onDecline = onDecline
-        )
-    } else {
-        FullScreenODialerCall(
-            callerName = callerName,
-            callerNumber = callerNumber,
-            onAnswer = onAnswer,
-            onDecline = onDecline
-        )
-    }
-}
+    val context = LocalContext.current
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    val swipeThreshold = 200f
 
-@Composable
-fun LiquidGlassBusyBanner(
-    callerName: String,
-    callerNumber: String,
-    onAnswer: () -> Unit,
-    onDecline: () -> Unit
-) {
+    val safeWallpaper = remember {
+        runCatching {
+            val options = BitmapFactory.Options().apply { inSampleSize = 4 }
+            BitmapFactory.decodeResource(context.resources, R.drawable.bg_luxury, options)?.asImageBitmap()
+        }.getOrNull()
+    }
+
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 24.dp)
-            .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.22f),
-                        Color.White.copy(alpha = 0.08f)
-                    )
-                )
-            )
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.55f),
-                        Color.White.copy(alpha = 0.12f)
-                    )
-                ),
-                shape = RoundedCornerShape(28.dp)
-            )
-            .padding(18.dp)
+            .fillMaxSize()
+            .background(Color(0xFF0B0B0E))
     ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFFF9800).copy(alpha = 0.3f))
-                        .border(1.5.dp, Color.White.copy(alpha = 0.5f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = callerName.take(1).uppercase(),
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Incoming call",
-                        color = Color.White.copy(alpha = 0.75f),
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = callerName,
-                        color = Color.White,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Mobile $callerNumber",
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 13.sp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onAnswer,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF2E7D32).copy(alpha = 0.85f))
-                        .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
-                ) {
-                    Icon(Icons.Rounded.Call, contentDescription = "Answer", tint = Color.White)
-                }
-
-                Text(
-                    text = "Send message",
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-                IconButton(
-                    onClick = onDecline,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFC62828).copy(alpha = 0.85f))
-                        .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
-                ) {
-                    Icon(Icons.Rounded.CallEnd, contentDescription = "Decline", tint = Color.White)
-                }
-            }
+        if (safeWallpaper != null) {
+            Image(
+                bitmap = safeWallpaper,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
         }
-    }
-}
-
-@Composable
-fun FullScreenODialerCall(
-    callerName: String,
-    callerNumber: String,
-    onAnswer: () -> Unit,
-    onDecline: () -> Unit
-) {
-    var offsetY by remember { mutableFloatStateOf(0f) }
-    val swipeThreshold = 220f
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(id = R.drawable.bg_luxury),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.25f))
+                .background(Color.Black.copy(alpha = 0.35f))
         )
 
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 84.dp),
+                .statusBarsPadding()
+                .padding(top = 72.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Text(
+                text = if (isRinging) "Incoming call" else "Connected",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 14.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = callerName,
                 color = Color.White,
                 fontSize = 34.sp,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = callerNumber,
-                color = Color.White.copy(alpha = 0.75f),
-                fontSize = 16.sp
-            )
+            if (callerNumber.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = callerNumber,
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 16.sp
+                )
+            }
         }
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 64.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                Icons.Rounded.KeyboardArrowUp,
-                contentDescription = null,
-                tint = Color(0xFF4CAF50),
-                modifier = Modifier.size(28.dp)
-            )
-            Text(
-                text = "Slide up to answer",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 12.sp
-            )
+        if (isRinging) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 56.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.KeyboardArrowUp,
+                    contentDescription = null,
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(28.dp)
+                )
+                Text(
+                    text = "Slide up to answer",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 12.sp
+                )
 
-            Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset(0, offsetY.roundToInt()) }
+                        .size(76.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(Color.White, Color(0xFFDCDCDC))
+                            )
+                        )
+                        .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragEnd = {
+                                    when {
+                                        offsetY <= -swipeThreshold -> onAnswer()
+                                        offsetY >= swipeThreshold -> onEndCall()
+                                        else -> offsetY = 0f
+                                    }
+                                },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    offsetY = (offsetY + dragAmount).coerceIn(-280f, 280f)
+                                }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Call,
+                        contentDescription = "Slide to answer or decline",
+                        tint = Color.Black,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Slide down to decline",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 12.sp
+                )
+                Icon(
+                    imageVector = Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = Color(0xFFF44336),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        } else {
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(0, offsetY.roundToInt()) }
-                    .size(76.dp)
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 64.dp)
+                    .size(72.dp)
                     .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(Color.White, Color(0xFFE0E0E0))
-                        )
-                    )
-                    .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onDragEnd = {
-                                when {
-                                    offsetY <= -swipeThreshold -> onAnswer()
-                                    offsetY >= swipeThreshold -> onDecline()
-                                    else -> offsetY = 0f
-                                }
-                            },
-                            onVerticalDrag = { change, dragAmount ->
-                                change.consume()
-                                offsetY = (offsetY + dragAmount).coerceIn(-300f, 300f)
-                            }
-                        )
-                    },
+                    .background(Color(0xFFC62828))
+                    .border(1.5.dp, Color.White.copy(alpha = 0.45f), CircleShape)
+                    .clickable(onClick = onEndCall),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Call,
-                    contentDescription = "Swipe Call",
-                    tint = Color.Black,
+                    imageVector = Icons.Rounded.CallEnd,
+                    contentDescription = "End call",
+                    tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
             }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Text(
-                text = "Slide down to decline",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 12.sp
-            )
-            Icon(
-                Icons.Rounded.KeyboardArrowDown,
-                contentDescription = null,
-                tint = Color(0xFFF44336),
-                modifier = Modifier.size(28.dp)
-            )
         }
     }
 }
