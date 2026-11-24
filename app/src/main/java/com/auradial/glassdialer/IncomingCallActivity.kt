@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.ContactsContract
 import android.telecom.Call
 import android.telecom.CallAudioState
 import android.view.WindowManager
@@ -34,6 +35,13 @@ class IncomingCallActivity : ComponentActivity() {
             var isSpeaker by remember {
                 mutableStateOf(initialAudio?.route == CallAudioState.ROUTE_SPEAKER)
             }
+            var audioRouteLabel by remember {
+                mutableStateOf(
+                    CustomInCallService.routeLabelFor(
+                        initialAudio?.route ?: CallAudioState.ROUTE_EARPIECE
+                    )
+                )
+            }
             var showBanner by remember { mutableStateOf(false) }
             var elapsedSeconds by remember { mutableIntStateOf(0) }
 
@@ -44,9 +52,10 @@ class IncomingCallActivity : ComponentActivity() {
                         finish()
                     }
                 }
-                val audioListener: (Boolean, Boolean) -> Unit = { muted, speaker ->
+                val audioListener: (Boolean, Boolean, String) -> Unit = { muted, speaker, route ->
                     isMuted = muted
                     isSpeaker = speaker
+                    audioRouteLabel = route
                 }
 
                 CustomInCallService.onCallStateChanged = callListener
@@ -96,6 +105,7 @@ class IncomingCallActivity : ComponentActivity() {
                 elapsedSeconds = elapsedSeconds,
                 isMuted = isMuted,
                 isSpeaker = isSpeaker,
+                audioRouteLabel = audioRouteLabel,
                 showBanner = showBanner,
                 onToggleBanner = { showBanner = !showBanner },
                 onAnswer = { CustomInCallService.answerCurrentCall() },
@@ -112,6 +122,28 @@ class IncomingCallActivity : ComponentActivity() {
                     val next = !isSpeaker
                     isSpeaker = next
                     CustomInCallService.toggleSpeaker(next)
+                },
+                onCycleAudioRoute = {
+                    CustomInCallService.cycleAudioRoute()
+                },
+                onHoldCall = { hold ->
+                    CustomInCallService.holdCall(hold)
+                },
+                onAddCall = {
+                    val dialIntent = Intent(this@IncomingCallActivity, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    runCatching { startActivity(dialIntent) }
+                },
+                onViewContact = {
+                    val intent = Intent(ContactsContract.Intents.Insert.ACTION).apply {
+                        putExtra(ContactsContract.Intents.Insert.PHONE, number)
+                        if (displayName != number) {
+                            putExtra(ContactsContract.Intents.Insert.NAME, displayName)
+                        }
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    runCatching { startActivity(intent) }
                 },
                 onSendDtmf = { digit: Char ->
                     CustomInCallService.sendDtmf(digit)
