@@ -86,6 +86,7 @@ private fun requestDefaultDialer(
             }
         }
     } else {
+        @Suppress("DEPRECATION")
         val intent = Intent(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER).apply {
             putExtra(
                 TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME,
@@ -119,7 +120,7 @@ private fun placeCall(context: Context, number: String) {
 @Composable
 fun AuraDialApp(initialNumber: String = "") {
     val context = LocalContext.current
-    var selectedTab by remember { mutableIntStateOf(0) } // 0 = Keypad, 1 = Contacts
+    var selectedTab by remember { mutableIntStateOf(0) }
     var dialedNumber by remember { mutableStateOf(initialNumber) }
     var searchQuery by remember { mutableStateOf("") }
     var isDefault by remember { mutableStateOf(isDefaultDialer(context)) }
