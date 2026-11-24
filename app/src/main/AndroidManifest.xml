@@ -10,7 +10,7 @@
 
     <application
         android:label="AuraDial Glass"
-        android:theme="@style/Theme.Material3.Dark.NoActionBar">
+        android:theme="@android:style/Theme.Material.NoActionBar">
 
         <activity
             android:name=".MainActivity"
