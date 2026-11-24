@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -73,6 +74,7 @@ fun CallScreen(
         ActiveCallView(
             callerName = callerName,
             callerNumber = callerNumber,
+            callState = callState,
             elapsedSeconds = elapsedSeconds,
             isMuted = isMuted,
             isSpeaker = isSpeaker,
@@ -85,16 +87,7 @@ fun CallScreen(
 }
 
 @Composable
-private fun rememberLuxuryWallpaper() = remember {
-    runCatching {
-        val options = BitmapFactory.Options().apply { inSampleSize = 4 }
-        // Uses bg_luxury.jpg decoded safely at 1/4 resolution
-    }
-    null as androidx.compose.ui.graphics.ImageBitmap?
-}
-
-@Composable
-private fun loadWallpaperBitmap(): androidx.compose.ui.graphics.ImageBitmap? {
+private fun loadWallpaperBitmap(): ImageBitmap? {
     val context = LocalContext.current
     return remember {
         runCatching {
@@ -144,7 +137,6 @@ private fun FullScreenIncomingView(
                 )
         )
 
-        // Top caller info + banner switch pill
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -188,7 +180,6 @@ private fun FullScreenIncomingView(
             }
         }
 
-        // Center sliding call handle with green chevrons up and red chevrons down
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -434,6 +425,7 @@ private fun IncomingCallBannerOverlay(
 private fun ActiveCallView(
     callerName: String,
     callerNumber: String,
+    callState: Int,
     elapsedSeconds: Int,
     isMuted: Boolean,
     isSpeaker: Boolean,
@@ -490,7 +482,6 @@ private fun ActiveCallView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top pill + Caller header + Timer
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
@@ -550,7 +541,6 @@ private fun ActiveCallView(
                 )
             }
 
-            // Middle: Either DTMF keypad or 4-button glass row (Mute, Record, AI Call Assistant, More)
             if (showDialPad) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -635,7 +625,6 @@ private fun ActiveCallView(
                 }
             }
 
-            // Bottom row: Speaker, End pill, Dial pad
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
