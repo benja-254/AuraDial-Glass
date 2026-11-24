@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -42,12 +44,17 @@ fun CallScreen(
     elapsedSeconds: Int,
     isMuted: Boolean,
     isSpeaker: Boolean,
+    audioRouteLabel: String = "Earpiece",
     showBanner: Boolean,
     onToggleBanner: () -> Unit,
     onAnswer: () -> Unit,
     onEndCall: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit,
+    onCycleAudioRoute: () -> Unit = onToggleSpeaker,
+    onHoldCall: (Boolean) -> Unit = {},
+    onAddCall: () -> Unit = {},
+    onViewContact: () -> Unit = {},
     onSendDtmf: (Char) -> Unit,
     onSendMessage: () -> Unit
 ) {
@@ -78,9 +85,15 @@ fun CallScreen(
             elapsedSeconds = elapsedSeconds,
             isMuted = isMuted,
             isSpeaker = isSpeaker,
+            audioRouteLabel = audioRouteLabel,
             onEndCall = onEndCall,
             onToggleMute = onToggleMute,
             onToggleSpeaker = onToggleSpeaker,
+            onCycleAudioRoute = onCycleAudioRoute,
+            onHoldCall = onHoldCall,
+            onAddCall = onAddCall,
+            onViewContact = onViewContact,
+            onSendMessage = onSendMessage,
             onSendDtmf = onSendDtmf
         )
     }
@@ -129,9 +142,9 @@ private fun FullScreenIncomingView(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.45f),
-                            Color.Black.copy(alpha = 0.25f),
-                            Color.Black.copy(alpha = 0.65f)
+                            Color.Black.copy(alpha = 0.42f),
+                            Color.Black.copy(alpha = 0.22f),
+                            Color.Black.copy(alpha = 0.62f)
                         )
                     )
                 )
@@ -429,15 +442,22 @@ private fun ActiveCallView(
     elapsedSeconds: Int,
     isMuted: Boolean,
     isSpeaker: Boolean,
+    audioRouteLabel: String,
     onEndCall: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleSpeaker: () -> Unit,
+    onCycleAudioRoute: () -> Unit,
+    onHoldCall: (Boolean) -> Unit,
+    onAddCall: () -> Unit,
+    onViewContact: () -> Unit,
+    onSendMessage: () -> Unit,
     onSendDtmf: (Char) -> Unit
 ) {
     val wallpaper = loadWallpaperBitmap()
     var isRecording by remember { mutableStateOf(false) }
-    var assistantActive by remember { mutableStateOf(false) }
+    var isOnHold by remember { mutableStateOf(callState == Call.STATE_HOLDING) }
     var showDialPad by remember { mutableStateOf(false) }
+    var showMoreMenu by remember { mutableStateOf(false) }
     var dtmfInput by remember { mutableStateOf("") }
 
     val formattedTimer = remember(elapsedSeconds) {
@@ -449,7 +469,7 @@ private fun ActiveCallView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0A1220))
+            .background(Color(0xFF0A0D12))
     ) {
         if (wallpaper != null) {
             Image(
@@ -466,8 +486,8 @@ private fun ActiveCallView(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF0A1526).copy(alpha = 0.72f),
-                            Color(0xFF090D16).copy(alpha = 0.88f)
+                            Color.Black.copy(alpha = 0.55f),
+                            Color(0xFF0B0E14).copy(alpha = 0.85f)
                         )
                     )
                 )
@@ -478,46 +498,114 @@ private fun ActiveCallView(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color.White.copy(alpha = 0.14f))
-                        .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(20.dp))
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
+            // Top bar: HD / Timer + More menu anchor
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(if (isRecording) Color(0xFFFF5252) else Color(0xFF4CAF50))
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.White.copy(alpha = 0.16f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
                         Text(
-                            text = formattedTimer,
+                            text = "HD",
                             color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text(
+                        text = when {
+                            isOnHold || callState == Call.STATE_HOLDING -> "On hold  $formattedTimer"
+                            callState == Call.STATE_DIALING -> "Calling..."
+                            else -> formattedTimer
+                        },
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                    IconButton(onClick = { showMoreMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Rounded.MoreVert,
+                            contentDescription = "More call options",
+                            tint = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false },
+                        containerColor = Color(0xFF1F2124),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = if (isRecording) "Stop recording" else "Record call",
+                                    color = Color.White
+                                )
+                            },
+                            onClick = {
+                                isRecording = !isRecording
+                                showMoreMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = if (isOnHold) "Resume call" else "Hold call",
+                                    color = Color.White
+                                )
+                            },
+                            onClick = {
+                                val nextHold = !isOnHold
+                                isOnHold = nextHold
+                                onHoldCall(nextHold)
+                                showMoreMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("View contact", color = Color.White) },
+                            onClick = {
+                                showMoreMenu = false
+                                onViewContact()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Send message", color = Color.White) },
+                            onClick = {
+                                showMoreMenu = false
+                                onSendMessage()
+                            }
                         )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(28.dp))
-
+            // Caller name & number
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            ) {
                 Text(
                     text = callerName,
                     color = Color.White,
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
                 if (callerNumber.isNotBlank()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -526,124 +614,151 @@ private fun ActiveCallView(
                         fontSize = 15.sp
                     )
                 }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Text(
-                    text = when {
-                        assistantActive -> "AI Assistant active"
-                        callState == Call.STATE_DIALING -> "Calling..."
-                        else -> formattedTimer
-                    },
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                if (isRecording) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "● Recording",
+                        color = Color(0xFFFF5252),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
 
-            if (showDialPad) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (dtmfInput.isNotEmpty()) {
-                        Text(
-                            text = dtmfInput,
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold
+            // Bottom dark glass sheet with 3x2 grid + red End circle
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color(0xFF181A1F).copy(alpha = 0.88f))
+                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(28.dp))
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (showDialPad) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (dtmfInput.isNotEmpty()) {
+                            Text(
+                                text = dtmfInput,
+                                color = Color.White,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        val rows = listOf(
+                            listOf('1', '2', '3'),
+                            listOf('4', '5', '6'),
+                            listOf('7', '8', '9'),
+                            listOf('*', '0', '#')
                         )
-                    }
-                    val padRows = listOf(
-                        listOf('1', '2', '3'),
-                        listOf('4', '5', '6'),
-                        listOf('7', '8', '9'),
-                        listOf('*', '0', '#')
-                    )
-                    padRows.forEach { row ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(24.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            row.forEach { ch ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(56.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.White.copy(alpha = 0.14f))
-                                        .clickable {
-                                            dtmfInput += ch
-                                            onSendDtmf(ch)
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = ch.toString(),
-                                        color = Color.White,
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                        rows.forEach { row ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                row.forEach { ch ->
+                                    Box(
+                                        modifier = Modifier
+                                            .size(50.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White.copy(alpha = 0.1f))
+                                            .clickable {
+                                                dtmfInput += ch
+                                                onSendDtmf(ch)
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = ch.toString(),
+                                            color = Color.White,
+                                            fontSize = 18.sp
+                                        )
+                                    }
                                 }
                             }
                         }
+                        Text(
+                            text = "Hide keypad",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .clickable { showDialPad = false }
+                        )
+                    }
+                } else {
+                    // Row 1: Add call | Video call | Bluetooth/Audio route
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        GridCallAction(
+                            icon = Icons.Rounded.Add,
+                            label = "Add call",
+                            active = false,
+                            onClick = onAddCall,
+                            modifier = Modifier.weight(1f)
+                        )
+                        GridCallAction(
+                            icon = Icons.Rounded.Videocam,
+                            label = "Video call",
+                            active = false,
+                            onClick = onToggleSpeaker,
+                            modifier = Modifier.weight(1f)
+                        )
+                        GridCallAction(
+                            icon = Icons.Rounded.BluetoothAudio,
+                            label = "$audioRouteLabel  >",
+                            active = audioRouteLabel == "Bluetooth",
+                            onClick = onCycleAudioRoute,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(22.dp))
+
+                    // Row 2: Speaker | Mute | Keypad
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        GridCallAction(
+                            icon = Icons.Rounded.VolumeUp,
+                            label = "Speaker",
+                            active = isSpeaker,
+                            onClick = onToggleSpeaker,
+                            modifier = Modifier.weight(1f)
+                        )
+                        GridCallAction(
+                            icon = if (isMuted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
+                            label = "Mute",
+                            active = isMuted,
+                            onClick = onToggleMute,
+                            modifier = Modifier.weight(1f)
+                        )
+                        GridCallAction(
+                            icon = Icons.Rounded.Dialpad,
+                            label = "Keypad",
+                            active = false,
+                            onClick = { showDialPad = true },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    GlassCallButton(
-                        icon = if (isMuted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
-                        label = "Mute",
-                        active = isMuted,
-                        onClick = onToggleMute,
-                        modifier = Modifier.weight(1f)
-                    )
-                    GlassCallButton(
-                        icon = Icons.Rounded.GraphicEq,
-                        label = if (isRecording) "Recording" else "Record",
-                        active = isRecording,
-                        onClick = { isRecording = !isRecording },
-                        modifier = Modifier.weight(1f)
-                    )
-                    GlassCallButton(
-                        icon = Icons.Rounded.AutoAwesome,
-                        label = "AI Call\nAssistant",
-                        active = assistantActive,
-                        onClick = { assistantActive = !assistantActive },
-                        modifier = Modifier.weight(1f)
-                    )
-                    GlassCallButton(
-                        icon = Icons.Rounded.MoreVert,
-                        label = "More",
-                        active = false,
-                        onClick = { showDialPad = true },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                GlassCallButton(
-                    icon = if (isSpeaker) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeDown,
-                    label = "Speaker",
-                    active = isSpeaker,
-                    onClick = onToggleSpeaker
-                )
+                Spacer(modifier = Modifier.height(24.dp))
 
+                // Centered red circular End button
                 Box(
                     modifier = Modifier
-                        .width(128.dp)
-                        .height(64.dp)
-                        .clip(RoundedCornerShape(32.dp))
+                        .size(62.dp)
+                        .clip(CircleShape)
                         .background(Color(0xFFE53935))
                         .clickable(onClick = onEndCall),
                     contentAlignment = Alignment.Center
@@ -652,23 +767,16 @@ private fun ActiveCallView(
                         imageVector = Icons.Rounded.CallEnd,
                         contentDescription = "End call",
                         tint = Color.White,
-                        modifier = Modifier.size(30.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
-
-                GlassCallButton(
-                    icon = Icons.Rounded.Dialpad,
-                    label = "Dial pad",
-                    active = showDialPad,
-                    onClick = { showDialPad = !showDialPad }
-                )
             }
         }
     }
 }
 
 @Composable
-private fun GlassCallButton(
+private fun GridCallAction(
     icon: ImageVector,
     label: String,
     active: Boolean,
@@ -678,37 +786,23 @@ private fun GlassCallButton(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-                .background(
-                    if (active) Color.White.copy(alpha = 0.34f)
-                    else Color.White.copy(alpha = 0.14f)
-                )
-                .border(
-                    width = 1.dp,
-                    color = if (active) Color.White.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.22f),
-                    shape = CircleShape
-                )
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = Color.White,
-                modifier = Modifier.size(26.dp)
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (active) Color(0xFF4FC3F7) else Color.White.copy(alpha = 0.92f),
+            modifier = Modifier.size(28.dp)
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.88f),
+            color = if (active) Color(0xFF4FC3F7) else Color.White.copy(alpha = 0.85f),
             fontSize = 12.sp,
-            lineHeight = 14.sp,
-            maxLines = 2
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
