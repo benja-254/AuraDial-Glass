@@ -113,7 +113,7 @@ class IncomingCallActivity : ComponentActivity() {
                     isSpeaker = next
                     CustomInCallService.toggleSpeaker(next)
                 },
-                onSendDtmf = { digit ->
+                onSendDtmf = { digit: Char ->
                     CustomInCallService.sendDtmf(digit)
                 },
                 onSendMessage = {
