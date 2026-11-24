@@ -171,7 +171,7 @@ fun AuraDialApp(initialNumber: String = "") {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0B0B0E))
+            .background(Color(0xFF0C0D10))
     ) {
         if (safeWallpaper != null) {
             Image(
@@ -188,8 +188,8 @@ fun AuraDialApp(initialNumber: String = "") {
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.55f),
-                            Color(0xFF0B0B0E).copy(alpha = 0.85f)
+                            Color.Black.copy(alpha = 0.52f),
+                            Color(0xFF0C0D10).copy(alpha = 0.78f)
                         )
                     )
                 )
@@ -200,8 +200,9 @@ fun AuraDialApp(initialNumber: String = "") {
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
+            // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -210,16 +211,15 @@ fun AuraDialApp(initialNumber: String = "") {
                 Text(
                     text = "AuraDial",
                     color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
 
                 if (!isDefault || !hasContactsPerm) {
-                    Surface(
-                        color = Color.White.copy(alpha = 0.14f),
-                        shape = RoundedCornerShape(20.dp),
+                    Box(
                         modifier = Modifier
-                            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color.White.copy(alpha = 0.14f))
                             .clickable {
                                 permissionsLauncher.launch(
                                     arrayOf(
@@ -230,38 +230,27 @@ fun AuraDialApp(initialNumber: String = "") {
                                     )
                                 )
                             }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.VerifiedUser,
-                                contentDescription = null,
-                                tint = Color(0xFF90CAF9),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (!isDefault) "Enable Dialer" else "Sync Contacts",
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                        Text(
+                            text = if (!isDefault) "Set Default" else "Contacts",
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
+            // Mode switcher
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color.White.copy(alpha = 0.08f))
-                    .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(18.dp))
-                    .padding(4.dp)
+                    .padding(3.dp)
             ) {
                 TabPill(
                     text = "Keypad",
@@ -277,13 +266,12 @@ fun AuraDialApp(initialNumber: String = "") {
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             if (selectedTab == 0) {
-                KeypadView(
+                GlassLockPadView(
                     dialedNumber = dialedNumber,
-                    matchingContacts = contacts.take(4),
-                    hasContactsPerm = hasContactsPerm,
+                    matchingContacts = contacts.take(3),
                     onDigitPress = { dialedNumber += it },
                     onBackspace = {
                         if (dialedNumber.isNotEmpty()) {
@@ -291,7 +279,9 @@ fun AuraDialApp(initialNumber: String = "") {
                         }
                     },
                     onClear = { dialedNumber = "" },
-                    onCallNumber = { placeCall(context, it) },
+                    onCall = { numberToCall ->
+                        placeCall(context, numberToCall)
+                    },
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -320,210 +310,221 @@ private fun TabPill(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) Color.White.copy(alpha = 0.2f) else Color.Transparent)
+            .clip(RoundedCornerShape(15.dp))
+            .background(if (selected) Color.White.copy(alpha = 0.18f) else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
             color = if (selected) Color.White else Color.White.copy(alpha = 0.6f),
-            fontSize = 14.sp,
+            fontSize = 13.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
         )
     }
 }
 
 @Composable
-private fun KeypadView(
+private fun GlassLockPadView(
     dialedNumber: String,
     matchingContacts: List<ContactItem>,
-    hasContactsPerm: Boolean,
     onDigitPress: (String) -> Unit,
     onBackspace: () -> Unit,
     onClear: () -> Unit,
-    onCallNumber: (String) -> Unit,
+    onCall: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        if (dialedNumber.isNotEmpty() && matchingContacts.isNotEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color.White.copy(alpha = 0.08f))
-                    .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(18.dp))
-            ) {
-                matchingContacts.forEach { contact ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onCallNumber(contact.phoneNumber) }
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = contact.name,
-                                color = Color.White,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = contact.phoneNumber,
-                                color = Color.White.copy(alpha = 0.65f),
-                                fontSize = 12.sp
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Rounded.Call,
-                            contentDescription = "Call ${contact.name}",
-                            tint = Color(0xFF4CAF50),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-        } else if (!hasContactsPerm && dialedNumber.isEmpty()) {
-            Text(
-                text = "Tap \"Sync Contacts\" above to match names as you dial.",
-                color = Color.White.copy(alpha = 0.55f),
-                fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
-
-        Row(
+        // Top display + live contact match suggestion
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(top = 6.dp)
         ) {
             Text(
-                text = dialedNumber.ifEmpty { "Enter number" },
-                color = if (dialedNumber.isEmpty()) Color.White.copy(alpha = 0.35f) else Color.White,
-                fontSize = if (dialedNumber.length > 12) 26.sp else 34.sp,
-                fontWeight = FontWeight.SemiBold,
+                text = if (dialedNumber.isEmpty()) "Enter number" else dialedNumber,
+                color = if (dialedNumber.isEmpty()) Color.White.copy(alpha = 0.85f) else Color.White,
+                fontSize = if (dialedNumber.length > 12) 24.sp else 28.sp,
+                fontWeight = FontWeight.Normal,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
+                overflow = TextOverflow.Ellipsis
             )
 
-            if (dialedNumber.isNotEmpty()) {
-                IconButton(
-                    onClick = onBackspace,
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Backspace,
-                        contentDescription = "Delete digit",
-                        tint = Color.White.copy(alpha = 0.85f)
-                    )
-                }
+            Spacer(modifier = Modifier.height(4.dp))
+
+            if (dialedNumber.isNotEmpty() && matchingContacts.isNotEmpty()) {
+                val topMatch = matchingContacts.first()
+                Text(
+                    text = "${topMatch.name} • ${topMatch.phoneNumber}",
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onCall(topMatch.phoneNumber) }
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            } else {
+                Text(
+                    text = "Tap digits to dial or search contacts",
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 12.sp
+                )
             }
         }
 
+        // Frosted circular 1-9 grid
         val rows = listOf(
             listOf("1" to "", "2" to "ABC", "3" to "DEF"),
             listOf("4" to "GHI", "5" to "JKL", "6" to "MNO"),
-            listOf("7" to "PQRS", "8" to "TUV", "9" to "WXYZ"),
-            listOf("*" to "", "0" to "+", "#" to "")
+            listOf("7" to "PQRS", "8" to "TUV", "9" to "WXYZ")
         )
 
         Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
         ) {
             rows.forEach { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     row.forEach { (digit, letters) ->
-                        Box(
-                            modifier = Modifier
-                                .size(74.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.1f))
-                                .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape)
-                                .clickable { onDigitPress(digit) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = digit,
-                                    color = Color.White,
-                                    fontSize = 26.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                if (letters.isNotEmpty()) {
-                                    Text(
-                                        text = letters,
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        fontSize = 9.sp,
-                                        letterSpacing = 1.sp
-                                    )
-                                }
-                            }
-                        }
+                        FrostedDigitCircle(
+                            digit = digit,
+                            letters = letters,
+                            onClick = { onDigitPress(digit) }
+                        )
                     }
+                }
+            }
+
+            // Bottom row: Backspace icon | 0 (+) | CALL action
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(76.dp)
+                        .clip(CircleShape)
+                        .clickable(
+                            enabled = dialedNumber.isNotEmpty(),
+                            onClick = onBackspace
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (dialedNumber.isNotEmpty()) {
+                        Icon(
+                            imageVector = Icons.Rounded.Backspace,
+                            contentDescription = "Backspace",
+                            tint = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                FrostedDigitCircle(
+                    digit = "0",
+                    letters = "+",
+                    onClick = { onDigitPress("0") }
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(76.dp)
+                        .clip(CircleShape)
+                        .clickable {
+                            val target = dialedNumber.ifBlank {
+                                matchingContacts.firstOrNull()?.phoneNumber.orEmpty()
+                            }
+                            if (target.isNotBlank()) {
+                                onCall(target)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "CALL",
+                        color = if (dialedNumber.isNotEmpty()) Color.White else Color.White.copy(alpha = 0.5f),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Row(
+        // Bottom pill action (Clear / Emergency)
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Spacer(modifier = Modifier.size(56.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(68.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF2E7D32))
-                    .border(1.5.dp, Color.White.copy(alpha = 0.45f), CircleShape)
-                    .clickable {
-                        if (dialedNumber.isNotBlank()) {
-                            onCallNumber(dialedNumber)
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Call,
-                    contentDescription = "Call",
-                    tint = Color.White,
-                    modifier = Modifier.size(30.dp)
-                )
-            }
-
-            if (dialedNumber.isNotEmpty()) {
-                IconButton(
-                    onClick = onClear,
-                    modifier = Modifier.size(56.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Clear,
-                        contentDescription = "Clear number",
-                        tint = Color.White.copy(alpha = 0.7f)
-                    )
+                .padding(bottom = 6.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(Color.White.copy(alpha = 0.14f))
+                .clickable {
+                    if (dialedNumber.isNotEmpty()) {
+                        onClear()
+                    } else {
+                        onCall("112")
+                    }
                 }
-            } else {
-                Spacer(modifier = Modifier.size(56.dp))
+                .padding(horizontal = 24.dp, vertical = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (dialedNumber.isNotEmpty()) "Clear number" else "Emergency call",
+                color = Color.White.copy(alpha = 0.9f),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun FrostedDigitCircle(
+    digit: String,
+    letters: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(76.dp)
+            .clip(CircleShape)
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.24f),
+                        Color.White.copy(alpha = 0.12f)
+                    )
+                )
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = digit,
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Normal
+            )
+            if (letters.isNotEmpty()) {
+                Text(
+                    text = letters,
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 9.sp,
+                    letterSpacing = 1.2.sp
+                )
             }
         }
     }
@@ -577,7 +578,7 @@ private fun ContactsListView(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(Color.White.copy(alpha = 0.1f))
                             .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(16.dp))
                             .clickable { onCallContact(contact) }
                             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -587,7 +588,7 @@ private fun ContactsListView(
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.14f)),
+                                .background(Color.White.copy(alpha = 0.16f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
