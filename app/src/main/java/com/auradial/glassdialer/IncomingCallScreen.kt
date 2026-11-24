@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -235,10 +237,9 @@ private fun FullScreenIncomingView(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Call,
+                Image(
+                    painter = painterResource(id = R.drawable.call),
                     contentDescription = "Slide up to answer, down to decline",
-                    tint = Color(0xFF111111),
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -385,10 +386,9 @@ private fun IncomingCallBannerOverlay(
                         .clickable(onClick = onAnswer),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Call,
+                    Image(
+                        painter = painterResource(id = R.drawable.answer),
                         contentDescription = "Answer",
-                        tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -422,10 +422,9 @@ private fun IncomingCallBannerOverlay(
                         .clickable(onClick = onDecline),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.CallEnd,
+                    Image(
+                        painter = painterResource(id = R.drawable.decline),
                         contentDescription = "Decline",
-                        tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -502,7 +501,6 @@ private fun ActiveCallView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top bar: HD / Timer + More menu anchor
             Box(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.align(Alignment.TopCenter),
@@ -593,7 +591,6 @@ private fun ActiveCallView(
                 }
             }
 
-            // Caller name & number
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(horizontal = 12.dp)
@@ -625,7 +622,6 @@ private fun ActiveCallView(
                 }
             }
 
-            // Bottom dark glass sheet with 3x2 grid + red End circle
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -691,19 +687,33 @@ private fun ActiveCallView(
                         )
                     }
                 } else {
-                    // Row 1: Add call | Video call | Bluetooth/Audio route
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.Top
                     ) {
-                        GridCallAction(
-                            icon = Icons.Rounded.Add,
-                            label = "Add call",
-                            active = false,
-                            onClick = onAddCall,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable(onClick = onAddCall)
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.add),
+                                contentDescription = "Add call",
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Add call",
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         GridCallAction(
                             icon = Icons.Rounded.Videocam,
                             label = "Video call",
@@ -722,7 +732,6 @@ private fun ActiveCallView(
 
                     Spacer(modifier = Modifier.height(22.dp))
 
-                    // Row 2: Speaker | Mute | Keypad
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -754,7 +763,6 @@ private fun ActiveCallView(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Centered red circular End button
                 Box(
                     modifier = Modifier
                         .size(62.dp)
@@ -763,10 +771,9 @@ private fun ActiveCallView(
                         .clickable(onClick = onEndCall),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.CallEnd,
+                    Image(
+                        painter = painterResource(id = R.drawable.hang_up),
                         contentDescription = "End call",
-                        tint = Color.White,
                         modifier = Modifier.size(28.dp)
                     )
                 }
